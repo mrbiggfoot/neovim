@@ -80,6 +80,9 @@ file(MAKE_DIRECTORY ${LINT_SUPPRESSES_ROOT}/src)
 file(GLOB NVIM_SOURCES *.c)
 file(GLOB NVIM_HEADERS *.h)
 
+file(GLOB NVIM_CPP_SOURCES *.cpp)
+file(GLOB NVIM_CPP_HEADERS *.hpp)
+
 foreach(subdir
         os
         api
@@ -88,6 +91,7 @@ foreach(subdir
         tui
         event
         eval
+        fzy
         lua
         viml
         viml/parser
@@ -406,7 +410,8 @@ if(JEMALLOC_FOUND)
 endif()
 
 add_executable(nvim ${NVIM_GENERATED_FOR_SOURCES} ${NVIM_GENERATED_FOR_HEADERS}
-  ${NVIM_GENERATED_SOURCES} ${NVIM_SOURCES} ${NVIM_HEADERS})
+  ${NVIM_GENERATED_SOURCES} ${NVIM_SOURCES} ${NVIM_HEADERS}
+  ${NVIM_CPP_SOURCES} ${NVIM_CPP_HEADERS})
 target_link_libraries(nvim ${NVIM_EXEC_LINK_LIBRARIES})
 install_helper(TARGETS nvim)
 
@@ -470,6 +475,7 @@ add_library(
   EXCLUDE_FROM_ALL
   ${NVIM_SOURCES} ${NVIM_GENERATED_SOURCES}
   ${NVIM_HEADERS} ${NVIM_GENERATED_FOR_SOURCES} ${NVIM_GENERATED_FOR_HEADERS}
+  ${NVIM_CPP_SOURCES} ${NVIM_CPP_HEADERS}
 )
 set_property(TARGET libnvim APPEND PROPERTY
              INCLUDE_DIRECTORIES ${LUA_PREFERRED_INCLUDE_DIRS})
@@ -493,6 +499,7 @@ else()
     MODULE
     EXCLUDE_FROM_ALL
     ${NVIM_SOURCES} ${NVIM_GENERATED_SOURCES}
+    ${NVIM_CPP_SOURCES} ${NVIM_CPP_HEADERS}
     ${NVIM_HEADERS} ${NVIM_GENERATED_FOR_SOURCES} ${NVIM_GENERATED_FOR_HEADERS}
     ${UNIT_TEST_FIXTURES}
   )

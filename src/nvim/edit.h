@@ -2,16 +2,7 @@
 #define NVIM_EDIT_H
 
 #include "nvim/vim.h"
-
-/*
- * Array indexes used for cptext argument of ins_compl_add().
- */
-#define CPT_ABBR        0   // "abbr"
-#define CPT_MENU        1   // "menu"
-#define CPT_KIND        2   // "kind"
-#define CPT_INFO        3   // "info"
-#define CPT_USER_DATA   4   // "user data"
-#define CPT_COUNT       5   // Number of entries
+#include "nvim/compl.h"
 
 typedef int (*IndentGetter)(void);
 

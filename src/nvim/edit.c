@@ -1712,6 +1712,15 @@ change_indent (
       ai_col = 0;
     else
       ai_col -= insstart_less;
+
+    if (pum_visible()) {
+      if (compl_col <= insstart_less)
+        compl_col = 0;
+      else
+        compl_col -= insstart_less;
+      pum_undisplay();
+      ins_compl_show_pum();
+    }
   }
 
   /*

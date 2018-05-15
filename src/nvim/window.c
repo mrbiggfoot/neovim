@@ -3752,6 +3752,12 @@ static void win_enter_ext(win_T *wp, bool undo_sync, int curwin_invalid,
 
   /* Change directories when the 'acd' option is set. */
   do_autochdir();
+
+  if (curbuf && curbuf->terminal) {
+    const uint16_t term_width =
+      (uint16_t)(MAX(0, curwin->w_width - win_col_off(curwin)));
+    terminal_resize(curbuf->terminal, term_width, (uint16_t)curwin->w_height);
+  }
 }
 
 

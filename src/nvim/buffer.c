@@ -1520,6 +1520,12 @@ void enter_buffer(buf_T *buf)
   if (!curbuf->b_help && curwin->w_p_spell && *curwin->w_s->b_p_spl != NUL)
     (void)did_set_spelllang(curwin);
 
+  if (curbuf && curbuf->terminal) {
+    const uint16_t term_width =
+      (uint16_t)(MAX(0, curwin->w_width - win_col_off(curwin)));
+    terminal_resize(curbuf->terminal, term_width, (uint16_t)curwin->w_height);
+  }
+
   redraw_later(NOT_VALID);
 }
 

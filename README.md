@@ -1,131 +1,93 @@
-[![Neovim](https://raw.githubusercontent.com/neovim/neovim.github.io/master/logos/neovim-logo-600x173.png)](https://neovim.io)
+# neovim + fuzzy completion
+This is a [neovim](https://github.com/neovim/neovim) fork that enables fuzzy
+search on completion candidates by the virtue of slightly modified
+[fzy](https://github.com/jhawthorn/fzy). All you need to do is
+`set completeopt+=fuzzy` and trigger completion popup somehow (I personally use
+[mucomplete](https://github.com/lifepillar/vim-mucomplete) plugin for that).
 
-[Wiki](https://github.com/neovim/neovim/wiki) |
-[Documentation](https://neovim.io/doc) |
-[Twitter](https://twitter.com/Neovim) |
-[Community](https://neovim.io/community/) |
-[Gitter **Chat**](https://gitter.im/neovim/neovim)
+## Installation
+Please see the "Install from source" instructions on the
+[neovim](https://github.com/neovim/neovim) page. Just install this neovim fork
+from the source as you would install neovim. No extra setup is required, `fzy`
+algorithm is already baked in.
 
-[![Travis Build Status](https://travis-ci.org/neovim/neovim.svg?branch=master)](https://travis-ci.org/neovim/neovim)
-[![AppVeyor Build status](https://ci.appveyor.com/api/projects/status/urdqjrik5u521fac/branch/master?svg=true)](https://ci.appveyor.com/project/neovim/neovim/branch/master)
-[![codecov](https://img.shields.io/codecov/c/github/neovim/neovim.svg)](https://codecov.io/gh/neovim/neovim)
-[![Coverity Scan Build](https://scan.coverity.com/projects/2227/badge.svg)](https://scan.coverity.com/projects/2227)
-[![Clang Scan Build](https://neovim.io/doc/reports/clang/badge.svg)](https://neovim.io/doc/reports/clang)
-[![PVS-studio Check](https://neovim.io/doc/reports/pvs/badge.svg)](https://neovim.io/doc/reports/pvs/PVS-studio.html.d)
+Some `#define`s for fine tuning:
+* `src/nvim/tags_cache.hpp`
+```c++
+// Ignore tag names with length less than this.
+#define MIN_TAG_NAME_LENTH 4
+```
+* `src/nvim/match.hpp`
+```c++
+// Min length of the pattern to trigger custom matches with. Used for
+// optimization to reduce the number of candidates in fuzzy search.
+#define MIN_CUSTOM_PATTERN_LENGTH 0
 
-[![Packages](https://repology.org/badge/tiny-repos/neovim.svg)](https://repology.org/metapackage/neovim)
-[![Debian CI](https://badges.debian.net/badges/debian/testing/neovim/version.svg)](https://buildd.debian.org/neovim)
-[![Downloads](https://img.shields.io/github/downloads/neovim/neovim/total.svg?maxAge=2592001)](https://github.com/neovim/neovim/releases/)
+// Max number of threads for match score calculation.
+#define MAX_NUM_MATCH_THREADS 4
+```
 
-Neovim is a project that seeks to aggressively refactor Vim in order to:
+## Caveats
+- Works only for ASCII characters. This is a limitation of
+  [fzy](https://github.com/jhawthorn/fzy). Please let me know if there's a
+  better C/C++ fuzzy matching algorithm that is open source.
+- Uses some extra memory for tags caching. Proportional to the tags files size,
+  though should be less than 1/10th of the total tags files size in most cases.
+  This memory is allocated only at the time of the very first fuzzy completion.
+  The tags cache is rebuilt automatically if a tag file modification time stamp
+  is found to be different from the cached one.
+- Probably not buildable on Windows. It's just because I don't have a Windows
+  environment to test it on, but PRs to fix this are welcome.
 
-- Simplify maintenance and encourage [contributions](CONTRIBUTING.md)
-- Split the work between multiple developers
-- Enable [advanced UIs] without modifications to the core
-- Maximize [extensibility](https://github.com/neovim/neovim/wiki/Plugin-UI-architecture)
+## Tags cache
+Regular tags files are used to build the tags cache. However, if `b:compl_tags`
+is set, the tags cache is built based on the tags from the file pointed to by
+`b:compl_tags`. This is needed to implement a possibility of narrowing down
+the list of candidates by doing search only in the tags relevant to the buffer.
 
-See [the wiki](https://github.com/neovim/neovim/wiki/Introduction) and [Roadmap]
-for more information.
+## FAQ
+### How is it different from using deoplete/nvim-completion-manager/etc?
+All the async completion plugins that I've seen so far are slow. They cannot
+work reliably on huge amount of completion candidates. Usually most of the
+completion candidates come from tags, and at least at the moment, `deoplete`
+and `NCM` don't have full-fledged fuzzy search support for tag files. They
+utilize binary search, which can't be used for fuzzy matching. In fact I'm
+quite skeptical about the possibility of implementing a performant fuzzy search
+in pure Python.
 
-[![Throughput Graph](https://graphs.waffle.io/neovim/neovim/throughput.svg)](https://waffle.io/neovim/neovim/metrics)
+Using a language server instead of tags has its own drawbacks: last time I
+checked, building ASTs by `clang` ate up a lot of memory (I'm talking
+gigabytes!) and slowed down my system to crawl. Also, there's obviously a
+delay needed for the compilation to complete, during which you are not getting
+completion candidates.
 
-Install from source
--------------------
+Sync plugins like e.g. `AutoComplPop`, `VimCompletesMe` or `mucomplete` don't
+support fuzzy search. Maybe there is a potential to do it properly in this
+kind of plugins by calling a fast external function from a compiled library
+to match/sort candidates, but that would be a one-off solution specific to the
+plugin. The solution via enabling fuzzy search at neovim level should make all
+the aforementioned sync plugins use it automatically.
 
-    make CMAKE_BUILD_TYPE=RelWithDebInfo
-    sudo make install
+### Is any other neovim functionality affected?
+No. Only if you use `fuzzy` option in `completeopt` you should see the new
+behavior, otherwise it should behave like vanilla neovim.
 
-To install to a non-default location, set `CMAKE_INSTALL_PREFIX`:
+### Will it be merged into neovim at some point?
+Probably no. At least, I have no plans of doing it because my view on software
+development is quite different from the one of the neovim maintainers'. Though
+feel free to use my changes as a base if you have enough motivation to bring
+it to neovim.
 
-    make CMAKE_EXTRA_FLAGS="-DCMAKE_INSTALL_PREFIX=/full/path/"
-    make install
+### How will it be maintained?
+I will try to integrate at least all the major stable releases of neovim.
+Perhaps I'll sync with upstream more often if some critical bugs get fixed
+there. My commits will always stay on top of the latest rebase point. Also, all
+significant `fzy` algorithm improvements will be brought in.
 
-To list all targets:
+### Will you make the same functionality for vim?
+[Yes.](https://github.com/mrbiggfoot/vim)
 
-    cmake --build build --target help
-
-To skip "bundled" dependencies define `USE_BUNDLED_DEPS=NO` (CMake option: `USE_BUNDLED=NO`).
-
-See [the wiki](https://github.com/neovim/neovim/wiki/Building-Neovim) for details.
-
-Install from package
---------------------
-
-Pre-built packages for Windows, macOS, and Linux are found at the
-[Releases](https://github.com/neovim/neovim/releases/) page.
-
-Managed packages are in [Homebrew], [Debian], [Ubuntu], [Fedora], [Arch Linux], [Gentoo],
-and [more](https://github.com/neovim/neovim/wiki/Installing-Neovim)!
-
-Project layout
---------------
-
-    ├─ ci/              build automation
-    ├─ cmake/           build scripts
-    ├─ runtime/         user plugins/docs
-    ├─ src/             application source code (see src/nvim/README.md)
-    │  ├─ api/          API subsystem
-    │  ├─ eval/         VimL subsystem
-    │  ├─ event/        event-loop subsystem
-    │  ├─ generators/   code generation (pre-compilation)
-    │  ├─ lib/          generic data structures
-    │  ├─ lua/          lua subsystem
-    │  ├─ msgpack_rpc/  RPC subsystem
-    │  ├─ os/           low-level platform code
-    │  └─ tui/          built-in UI
-    ├─ third-party/     cmake subproject to build dependencies
-    └─ test/            tests (see test/README.md)
-
-Features
---------
-
-- Modern [GUIs](https://github.com/neovim/neovim/wiki/Related-projects#gui)
-- [API](https://github.com/neovim/neovim/wiki/Related-projects#api-clients)
-  access from any language including clojure, lisp, go, haskell, lua,
-  javascript, perl, python, ruby, rust.
-- Embedded, scriptable [terminal emulator](https://neovim.io/doc/user/nvim_terminal_emulator.html)
-- Asynchronous [job control](https://github.com/neovim/neovim/pull/2247)
-- [Shared data (shada)](https://github.com/neovim/neovim/pull/2506) among multiple editor instances
-- [XDG base directories](https://github.com/neovim/neovim/pull/3470) support
-- Compatible with most Vim plugins, including Ruby and Python plugins.
-
-See [`:help nvim-features`][nvim-features] for the full list!
-
-License
--------
-
-Neovim is licensed under the terms of the Apache 2.0 license, except for
-parts that were contributed under the Vim license.
-
-- Contributions committed before [b17d96][license-commit] remain under the Vim
-  license.
-
-- Contributions committed after [b17d96][license-commit] are licensed under
-  Apache 2.0 unless those contributions were copied from Vim (identified in
-  the commit logs by the `vim-patch` token).
-
-See `LICENSE` for details.
-
-    Vim is Charityware.  You can use and copy it as much as you like, but you are
-    encouraged to make a donation for needy children in Uganda.  Please see the
-    kcc section of the vim docs or visit the ICCF web site, available at these URLs:
-
-            http://iccf-holland.org/
-            http://www.vim.org/iccf/
-            http://www.iccf.nl/
-
-    You can also sponsor the development of Vim.  Vim sponsors can vote for
-    features.  The money goes to Uganda anyway.
-
-[license-commit]: https://github.com/neovim/neovim/commit/b17d9691a24099c9210289f16afb1a498a89d803
-[nvim-features]: https://neovim.io/doc/user/vim_diff.html#nvim-features
-[Roadmap]: https://neovim.io/roadmap/
-[advanced UIs]: https://github.com/neovim/neovim/wiki/Related-projects#gui
-[Homebrew]: https://github.com/neovim/homebrew-neovim#installation
-[Debian]: https://packages.debian.org/testing/neovim
-[Ubuntu]: http://packages.ubuntu.com/search?keywords=neovim
-[Fedora]: https://admin.fedoraproject.org/pkgdb/package/rpms/neovim
-[Arch Linux]: https://www.archlinux.org/packages/?q=neovim
-[Gentoo]: https://packages.gentoo.org/packages/app-editors/neovim
-
-<!-- vim: set tw=80: -->
+## Thanks
+- [Bram Moolenaar](https://github.com/brammool)
+- [Thiago de Arruda](https://github.com/tarruda)
+- [John Hawthorn](https://github.com/jhawthorn)
